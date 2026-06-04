@@ -3,7 +3,7 @@ import type { User } from "../../types/chat";
 
 interface AuthScreenProps {
   users: User[];
-  onLogin: (user: User) => void;
+  onLogin: (user: User) => void | Promise<void>;
   error?: string | null;
 }
 
