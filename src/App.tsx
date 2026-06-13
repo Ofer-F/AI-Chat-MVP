@@ -1,33 +1,74 @@
-import { useState } from "react";
-import type { User } from "./types/chat";
+import { useEffect, useState } from "react";
+import type { PublicUser } from "./types/chat";
 import { ChatLayout } from "./components/ChatLayout/ChatLayout";
-import { mockUsers } from "./api/mockData";
 import { AuthScreen } from "./components/AuthScreen/AuthScreen";
-import { authApiClient, setAuthToken } from "./api/apiClient";
+import {
+  authApiClient,
+  getAuthToken,
+  setUnauthorizedHandler,
+} from "./api/apiClient";
+
+type SessionStatus = "restoring" | "guest" | "authenticated";
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [authError, setAuthError] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<PublicUser | null>(null);
+  const [status, setStatus] = useState<SessionStatus>(() =>
+    getAuthToken() ? "restoring" : "guest"
+  );
 
-  async function handleLogin(user: User): Promise<void> {
-    try {
-      const response = await authApiClient.login({ userId: user.id });
-      setCurrentUser(response.user);
-      setAuthError(null);
-    } catch (error) {
-      setAuthError(error instanceof Error ? error.message : "Could not sign in.");
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setCurrentUser(null);
+      setStatus("guest");
+    });
+
+    if (!getAuthToken()) {
+      return () => setUnauthorizedHandler(null);
     }
+
+    let active = true;
+    authApiClient
+      .getMe()
+      .then((user) => {
+        if (!active) return;
+        setCurrentUser(user);
+        setStatus("authenticated");
+      })
+      .catch(() => {
+        if (!active) return;
+        authApiClient.logout();
+        setStatus("guest");
+      });
+
+    return () => {
+      active = false;
+      setUnauthorizedHandler(null);
+    };
+  }, []);
+
+  function handleAuthenticated(user: PublicUser): void {
+    setCurrentUser(user);
+    setStatus("authenticated");
   }
 
   function handleLogout(): void {
-    setAuthToken(null);
+    authApiClient.logout();
     setCurrentUser(null);
+    setStatus("guest");
   }
 
-  if (!currentUser) {
+  if (status === "restoring") {
     return (
-      <AuthScreen users={mockUsers} onLogin={handleLogin} error={authError} />
+      <main className="auth">
+        <div className="auth__card">
+          <p className="auth__hint">Restoring your session…</p>
+        </div>
+      </main>
     );
+  }
+
+  if (status === "guest" || !currentUser) {
+    return <AuthScreen onAuthenticated={handleAuthenticated} />;
   }
 
   return (
