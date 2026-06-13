@@ -36,11 +36,9 @@ export async function performSend(
   dispatch({ type: "messageOptimisticAdded", message: optimisticMessage });
 
   try {
-    const response = await conversationApiClient.sendMessage(
-      conversationId,
-      senderId,
-      { body: trimmedBody }
-    );
+    const response = await conversationApiClient.sendMessage(conversationId, {
+      body: trimmedBody,
+    });
     dispatch({
       type: "messageSendConfirmed",
       temporaryId: optimisticMessage.id,

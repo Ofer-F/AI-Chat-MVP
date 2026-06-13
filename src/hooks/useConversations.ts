@@ -55,12 +55,12 @@ export function useConversations(
     dispatch({ type: "loadStarted" });
 
     try {
-      const response = await conversationApiClient.getConversations(currentUserId);
+      const response = await conversationApiClient.getConversations();
       dispatch({ type: "loadSucceeded", conversations: response.conversations });
     } catch {
       dispatch({ type: "loadFailed", error: "Could not load conversations." });
     }
-  }, [currentUserId]);
+  }, []);
 
   useEffect(() => {
     if (!currentUserId) return;
